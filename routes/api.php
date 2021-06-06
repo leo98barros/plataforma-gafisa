@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,16 +18,35 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
+/**
+ * Gerando um qrcode a partir da url passada no formdata
+ */
+Route::prefix('v1')->group(function () {
+    Route::apiResource('empreendimentos', Controllers\EmpreendimentoController::class)->only(['index', 'show']);
+    Route::apiResource('localidades', Controllers\LocalidadeController::class)->only(['index', 'show']);
+});
 
 /**
  * Gerando um qrcode a partir da url passada no formdata
  */
-Route::post('qr-code', function (Request $request) {
-    
-    $request->validate(['url' => 'required|url|max:2000']);
+Route::post('qr-code', function (Request $request) /* : \Illuminate\Http\JsonResponse */ {
 
-    $file = QRCode::url($request->url)->svg();
-    
+    $validator = Validator::make($request->all(), [
+        'url' => 'required|url|max:1500'
+    ], [
+        'url.required' => 'O campo url é obrigatório',
+        'url.url' => 'O campo url é uma url inválida',
+        'url.max' => 'O campo url não pode ser ser maior que 1500 caracteres',
+    ]);
+
+    if ($validator->fails()) {
+        return responder()
+            ->error('form_validation', 'Por favor, cheque seus dados e tente novamente')
+            ->data(['fields' => $validator->errors()->toArray()])
+            ->respond(422);
+    }
+
+    $file =  QRCode::url($request->url)->svg();
+
     return $file;
 });
